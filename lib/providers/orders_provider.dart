@@ -24,12 +24,14 @@ class OrdersProvider extends ChangeNotifier {
       .where((order) => order.status != 'Cancelled')
       .fold<double>(0, (s, order) => s + order.amount);
 
-  /// Fetch orders by customer email from Firestore
-  Future<List<AdminOrder>> fetchUserOrders(String email) async {
+  /// Fetch orders by userId (not email) from Firestore
+  Future<List<AdminOrder>> fetchUserOrders(String userId) async {
+    if (userId.isEmpty) return [];
+
     try {
       final QuerySnapshot snapshot = await _db
           .collection('orders')
-          .where('customer', isEqualTo: email)
+          .where('userId', isEqualTo: userId)
           .orderBy('createdAt', descending: true)
           .get();
 
@@ -39,9 +41,32 @@ class OrdersProvider extends ChangeNotifier {
                 AdminOrder.fromMap(doc.id, doc.data() as Map<String, dynamic>),
           )
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error fetching user orders: $e');
       return [];
     }
+  }
+
+  /// Listen to real-time order updates for a user
+  Stream<List<AdminOrder>> streamUserOrders(String userId) {
+    if (userId.isEmpty) {
+      return Stream.value([]);
+    }
+
+    return _db
+        .collection('orders')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => AdminOrder.fromMap(doc.id, doc.data()))
+              .toList();
+        })
+        .handleError((error) {
+          debugPrint('Error in streamUserOrders: $error');
+          return <AdminOrder>[];
+        });
   }
 
   /// Fetch all orders from Firestore
@@ -95,6 +120,8 @@ class OrdersProvider extends ChangeNotifier {
             productName: product.name,
             quantity: quantities[product.id] ?? 0,
             unitPrice: product.price,
+            imageUrl: product.imageUrl, // Include product image
+            unit: product.unit, // Include product unit
           ),
         )
         .where((line) => line.quantity > 0)

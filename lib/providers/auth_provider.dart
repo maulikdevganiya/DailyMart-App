@@ -70,8 +70,10 @@ class AuthProvider extends ChangeNotifier {
 
         if (userDoc.exists) {
           final data = userDoc.data() as Map<String, dynamic>?;
-          if (data != null && data['isAdmin'] == true) {
-            _role = AppRole.admin;
+          if (data != null) {
+            // Load the AppUser so profile screen has data
+            _currentUser = AppUser.fromMap(_firebaseUser!.uid, data);
+            _role = data['isAdmin'] == true ? AppRole.admin : AppRole.customer;
           } else {
             _role = AppRole.customer;
           }

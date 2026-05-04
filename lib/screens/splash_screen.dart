@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/cart_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/product_catalog_provider.dart';
 import 'admin/admin_shell_screen.dart';
@@ -60,10 +61,17 @@ class _SplashScreenState extends State<SplashScreen>
         MaterialPageRoute(builder: (_) => const AdminShellScreen()),
       );
     } else if (auth.isCustomer) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainShellScreen()),
-      );
+      // Initialize cart with user ID and restore saved items
+      final cartProvider = context.read<CartProvider>();
+      cartProvider.setCurrentUser(auth.currentUid);
+      await cartProvider.restoreCartFromFirestore(auth.currentUid);
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainShellScreen()),
+        );
+      }
     } else {
       Navigator.pushReplacement(
         context,

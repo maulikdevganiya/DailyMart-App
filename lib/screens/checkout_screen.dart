@@ -40,12 +40,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final AddressProvider addressProvider = context.watch<AddressProvider>();
     final Address? selectedAddress = addressProvider.selectedAddress;
     final bool hasProfileAddress = auth.currentUser?.address.isNotEmpty == true;
+
+    // Determine effective address for checkout
+    final bool hasEffectiveAddress =
+        hasProfileAddress || selectedAddress != null;
     final String deliveryAddress = hasProfileAddress
         ? auth.currentUser!.address
-        : (selectedAddress?.fullAddress ?? '221B Green Street, Bangalore');
+        : (selectedAddress?.fullAddress ?? '');
     final String deliveryLabel = hasProfileAddress
         ? 'Saved Address'
         : (selectedAddress?.label ?? 'Home');
+
     final double itemTotal = cart.totalPrice;
     const double deliveryFee = 25;
     const double handlingFee = 8;
@@ -178,15 +183,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               onPressed:
                   (cart.totalItems == 0 ||
                       _isPlacingOrder ||
-                      selectedAddress == null)
+                      !hasEffectiveAddress)
                   ? null
                   : () async {
-                      final addressStr =
-                          '${selectedAddress.fullAddress}, ${selectedAddress.city} - ${selectedAddress.pincode}';
+                      // Build complete address for order
+                      final String addressStr;
+                      if (selectedAddress != null) {
+                        // Use selected address from address list
+                        addressStr =
+                            '${selectedAddress.fullAddress}, ${selectedAddress.city} - ${selectedAddress.pincode}';
+                      } else if (hasProfileAddress) {
+                        // Use profile address from user account
+                        addressStr = deliveryAddress;
+                      } else {
+                        // Should not reach here due to button disable logic,
+                        // but fallback to default
+                        addressStr = 'No address provided';
+                      }
 
                       if (_selectedPayment == 'Cash on Delivery') {
                         setState(() => _isPlacingOrder = true);
                         try {
+                          // Ensure we have complete order data
+                          if (cart.totalItems == 0) {
+                            throw Exception('Cart is empty');
+                          }
+
                           final String orderId = await context
                               .read<OrdersProvider>()
                               .placeOrder(
@@ -199,7 +221,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 paymentStatus: 'Pending',
                                 deliveryAddress: addressStr,
                               );
+
+                          // Clear cart after successful order
                           cart.clear();
+
                           if (!context.mounted) return;
                           Navigator.pushReplacement(
                             context,
@@ -222,6 +247,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           if (mounted) setState(() => _isPlacingOrder = false);
                         }
                       } else {
+                        // Other payment methods
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -244,7 +270,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     )
                   : Text(
-                      selectedAddress == null
+                      !hasEffectiveAddress
                           ? 'Add Address to Continue'
                           : 'Place Order  •  Rs ${grandTotal.toStringAsFixed(0)}',
                     ),

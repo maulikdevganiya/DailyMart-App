@@ -31,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authProvider = context.read<AuthProvider>();
     if (authProvider.currentUser != null) {
       _userOrdersFuture = context.read<OrdersProvider>().fetchUserOrders(
-        authProvider.currentUser!.email,
+        authProvider.currentUid, // Use userId instead of email
       );
     } else {
       _userOrdersFuture = Future.value([]);
