@@ -7,7 +7,11 @@ import '../screens/product_detail_screen.dart';
 import 'quantity_selector.dart';
 
 class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.product, this.showAddButton = true});
+  const ProductCard({
+    super.key,
+    required this.product,
+    this.showAddButton = true,
+  });
 
   final Product product;
   final bool showAddButton;
@@ -44,6 +48,8 @@ class ProductCard extends StatelessWidget {
                       Image.network(
                         product.imageUrl,
                         fit: BoxFit.cover,
+                        cacheHeight: 300,
+                        cacheWidth: 300,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: Colors.green.shade100,
                           alignment: Alignment.center,

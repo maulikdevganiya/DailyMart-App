@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/app_user.dart';
 
@@ -9,10 +10,12 @@ enum AppRole { guest, customer, admin }
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   AppRole _role = AppRole.guest;
   User? _firebaseUser;
   AppUser? _currentUser;
+  String? _lastError; // Track last error message
 
   AppRole get role => _role;
   bool get isAdmin => _role == AppRole.admin;
@@ -22,6 +25,7 @@ class AuthProvider extends ChangeNotifier {
   String get currentEmail => _firebaseUser?.email ?? 'guest@local';
   String get currentUid => _firebaseUser?.uid ?? '';
   AppUser? get currentUser => _currentUser;
+  String? get lastError => _lastError; // Expose last error
 
   /// Restore the persisted Firebase session after app launch.
   Future<void> restoreSession() async {
@@ -175,7 +179,202 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Register new customer with Firebase Auth + save profile to Firestore
+  /// Login with Google Sign-In
+  Future<bool> signInWithGoogle() async {
+    try {
+      _lastError = null; // Clear previous error
+      debugPrint('Starting Google Sign-In...');
+
+      // Attempt to get the currently signed-in account
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        _lastError = 'Google Sign-In cancelled by user';
+        debugPrint(_lastError);
+        notifyListeners();
+        return false;
+      }
+
+      debugPrint('Google Sign-In successful: ${googleUser.email}');
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      if (googleAuth.accessToken == null) {
+        _lastError =
+            'Failed to obtain Google authentication token. Please try again.';
+        debugPrint(_lastError);
+        notifyListeners();
+        return false;
+      }
+
+      // Create a new credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential
+      final UserCredential userCredential = await _auth
+          .signInWithCredential(credential)
+          .timeout(const Duration(seconds: 10));
+
+      _firebaseUser = userCredential.user;
+      if (_firebaseUser == null) {
+        _lastError = 'Firebase user creation failed. Please try again.';
+        debugPrint(_lastError);
+        notifyListeners();
+        return false;
+      }
+
+      // Save or update user in Firestore
+      await _saveGoogleUserToFirestore(
+        uid: _firebaseUser!.uid,
+        email: _firebaseUser!.email ?? '',
+        name: _firebaseUser!.displayName ?? 'User',
+        photoUrl: _firebaseUser!.photoURL,
+      );
+
+      _role = AppRole.customer;
+      await _fetchCurrentUser();
+      _lastError = null; // Clear error on success
+      notifyListeners();
+
+      debugPrint('Google Sign-In completed successfully');
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _lastError = _getFirebaseErrorMessage(e.code, e.message);
+      debugPrint(
+        'signInWithGoogle FirebaseAuthException: ${e.code} - ${e.message}',
+      );
+      _firebaseUser = null;
+      notifyListeners();
+      return false;
+    } on Exception catch (e) {
+      String err = e.toString();
+      if (err.contains('sign_in_failed') || err.contains('7')) {
+        _lastError =
+            'Google Sign-In failed (Error 7). This usually means your digital signature (SHA-1) is not registered in Firebase Console.';
+      } else if (err.contains('network_error')) {
+        _lastError = 'Network error. Please check your internet connection.';
+      } else {
+        _lastError = _getGenericErrorMessage(err);
+      }
+      debugPrint('signInWithGoogle Exception: $e');
+      _firebaseUser = null;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _lastError = _getGenericErrorMessage(e.toString());
+      debugPrint('signInWithGoogle error: $e');
+      _firebaseUser = null;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Get user-friendly Firebase error message
+  String _getFirebaseErrorMessage(String code, String? message) {
+    switch (code) {
+      case 'account-exists-with-different-credential':
+        return 'This email is already registered with a different login method.';
+      case 'invalid-credential':
+        return 'Invalid credentials. Please try again.';
+      case 'operation-not-allowed':
+        return 'Google Sign-In is not enabled. Please contact support.';
+      case 'user-disabled':
+        return 'Your account has been disabled. Please contact support.';
+      case 'user-not-found':
+        return 'User not found.';
+      case 'wrong-password':
+        return 'Wrong password. Please try again.';
+      case 'too-many-requests':
+        return 'Too many failed attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      default:
+        return message ?? 'Sign-in failed. Please try again.';
+    }
+  }
+
+  /// Get user-friendly error message from generic exception
+  String _getGenericErrorMessage(String errorString) {
+    if (errorString.contains('network')) {
+      return 'Network error. Please check your internet connection.';
+    } else if (errorString.contains('timeout')) {
+      return 'Connection timed out. Please try again.';
+    } else if (errorString.contains('cancelled') ||
+        errorString.contains('CANCELLED')) {
+      return 'Sign-in cancelled.';
+    } else if (errorString.contains('sign_in_cancelled')) {
+      return 'Sign-in cancelled by user.';
+    }
+    return 'An error occurred during sign-in. Please try again.';
+  }
+
+  /// Save Google user data to Firestore
+  Future<void> _saveGoogleUserToFirestore({
+    required String uid,
+    required String email,
+    required String name,
+    String? photoUrl,
+  }) async {
+    try {
+      final DocumentSnapshot userDoc = await _db
+          .collection('users')
+          .doc(uid)
+          .get()
+          .timeout(const Duration(seconds: 5));
+
+      if (userDoc.exists) {
+        // User already exists, update last login
+        await _db.collection('users').doc(uid).update({
+          'lastLogin': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // New user, create document
+        await _db.collection('users').doc(uid).set({
+          'name': name.trim(),
+          'email': email.toLowerCase().trim(),
+          'photoUrl': photoUrl ?? '',
+          'phone': '',
+          'address': '',
+          'isAdmin': false,
+          'isBlocked': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLogin': FieldValue.serverTimestamp(),
+        });
+      }
+
+      debugPrint('User data saved to Firestore: $email');
+    } catch (e) {
+      debugPrint('Error saving Google user to Firestore: $e');
+      rethrow;
+    }
+  }
+
+  /// Sign out from Google and Firebase
+  Future<void> signOutGoogle() async {
+    try {
+      await _auth.signOut();
+      await _googleSignIn.signOut();
+      _firebaseUser = null;
+      _currentUser = null;
+      _role = AppRole.guest;
+      notifyListeners();
+      debugPrint('Google Sign-Out completed');
+    } catch (e) {
+      debugPrint('Error signing out from Google: $e');
+    }
+  }
+
+  /// Check if user is signed in with Google
+  bool get isSignedInWithGoogle {
+    return _firebaseUser != null && _firebaseUser!.isAnonymous == false;
+  }
+
+  /// Register with Google Sign-In
   Future<bool> registerCustomer({
     required String name,
     required String email,
@@ -284,10 +483,16 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _auth.signOut();
-    _firebaseUser = null;
-    _currentUser = null;
-    _role = AppRole.guest;
-    notifyListeners();
+    try {
+      await _auth.signOut();
+      await _googleSignIn.signOut();
+      _firebaseUser = null;
+      _currentUser = null;
+      _role = AppRole.guest;
+      notifyListeners();
+      debugPrint('Logout completed');
+    } catch (e) {
+      debugPrint('Error during logout: $e');
+    }
   }
 }

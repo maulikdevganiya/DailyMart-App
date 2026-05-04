@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
+import '../widgets/google_sign_in_button.dart';
 import 'admin/admin_shell_screen.dart';
 import 'main_shell_screen.dart';
 import 'registration_screen.dart';
@@ -203,6 +204,29 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text('Login', style: TextStyle(fontSize: 16)),
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // Divider
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey.shade400)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade400)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Google Sign-In Button
+                  const GoogleSignInButton(),
                   const SizedBox(height: 16),
 
                   // Register link

@@ -31,6 +31,8 @@ class ProductDetailScreen extends StatelessWidget {
                     child: Image.network(
                       product.imageUrl,
                       fit: BoxFit.cover,
+                      cacheHeight: 600,
+                      cacheWidth: 600,
                       errorBuilder: (context, error, stackTrace) => Container(
                         color: Colors.green.shade100,
                         alignment: Alignment.center,

@@ -132,6 +132,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             child: Image.network(
                               product.imageUrl,
                               fit: BoxFit.cover,
+                              cacheHeight: 80,
+                              cacheWidth: 80,
                               errorBuilder: (context, error, stackTrace) =>
                                   Container(
                                     color: Colors.green.shade100,

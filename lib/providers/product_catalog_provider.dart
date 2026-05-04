@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/product.dart';
@@ -162,6 +163,7 @@ class ProductCatalogProvider extends ChangeNotifier {
     _items.add(
       CatalogProduct(product: Product.fromMap(ref.id, data), inStock: true),
     );
+    imageCache.clear();
     notifyListeners();
   }
 
@@ -211,6 +213,7 @@ class ProductCatalogProvider extends ChangeNotifier {
           ...data,
         }),
       );
+      imageCache.clear();
       notifyListeners();
     }
   }

@@ -1,13 +1,14 @@
 import 'dart:typed_data';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 
 import '../../models/category_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/product_catalog_provider.dart';
+import '../../services/cloudinary_service.dart';
 
 class AdminProductsScreen extends StatefulWidget {
   const AdminProductsScreen({super.key});
@@ -36,17 +37,18 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
     final TextEditingController deliveryMinutesController =
         TextEditingController(
-      text: existing == null
-          ? '10'
-          : existing.product.deliveryMinutes.toString(),
-    );
+          text: existing == null
+              ? '10'
+              : existing.product.deliveryMinutes.toString(),
+        );
     final TextEditingController imageUrlController = TextEditingController(
       text: existing?.product.imageUrl ?? '',
     );
 
     // Category dropdown state
-    final List<GroceryCategory> categories =
-        context.read<CategoryProvider>().categories;
+    final List<GroceryCategory> categories = context
+        .read<CategoryProvider>()
+        .categories;
     String? selectedCategoryId = existing?.product.categoryId;
     Uint8List? selectedImageBytes;
     String? selectedImageName;
@@ -55,9 +57,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
     // If editing, verify selected category still exists
     if (selectedCategoryId != null &&
-        !categories.any(
-          (c) => c.name.toLowerCase() == selectedCategoryId,
-        )) {
+        !categories.any((c) => c.name.toLowerCase() == selectedCategoryId)) {
       selectedCategoryId = null;
     }
 
@@ -67,380 +67,422 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-        return AlertDialog(
-          title: Text(isEdit ? 'Edit Product' : 'Add Product'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Product Name',
-                    prefixIcon: Icon(Icons.shopping_bag_outlined),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: selectedCategoryId,
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    prefixIcon: Icon(Icons.category_outlined),
-                  ),
-                  items: categories.map((cat) {
-                    return DropdownMenuItem<String>(
-                      value: cat.name.toLowerCase(),
-                      child: Row(
-                        children: [
-                          Icon(cat.iconData, size: 18, color: Colors.green.shade700),
-                          const SizedBox(width: 8),
-                          Text(cat.name),
-                        ],
+            return AlertDialog(
+              title: Text(isEdit ? 'Edit Product' : 'Add Product'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Product Name',
+                        prefixIcon: Icon(Icons.shopping_bag_outlined),
                       ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      selectedCategoryId = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: priceController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Price (Rs)',
-                    prefixIcon: Icon(Icons.currency_rupee),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: ratingController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Rating (0.0 - 5.0)',
-                    prefixIcon: Icon(Icons.star_outline),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: unitController,
-                  decoration: const InputDecoration(
-                    labelText: 'Unit (eg: 1 kg, 500 g, 6 pcs)',
-                    prefixIcon: Icon(Icons.straighten),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: deliveryMinutesController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Delivery Time (minutes)',
-                    prefixIcon: Icon(Icons.delivery_dining),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: () async {
-                    final FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.image,
-                      withData: true,
-                    );
-
-                    final PlatformFile? file = result?.files.single;
-                    if (file == null || file.bytes == null) {
-                      return;
-                    }
-
-                    setDialogState(() {
-                      selectedImageBytes = file.bytes;
-                      selectedImageName = file.name;
-                      previewImageUrl = null;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade300),
-                      color: Colors.grey.shade50,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                color: Colors.green.shade50,
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: selectedCategoryId,
+                      decoration: const InputDecoration(
+                        labelText: 'Category',
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      items: categories.map((cat) {
+                        return DropdownMenuItem<String>(
+                          value: cat.name.toLowerCase(),
+                          child: Row(
+                            children: [
+                              Icon(
+                                cat.iconData,
+                                size: 18,
+                                color: Colors.green.shade700,
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: selectedImageBytes != null
-                                    ? Image.memory(
-                                        selectedImageBytes!,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : (previewImageUrl != null &&
-                                            previewImageUrl!.isNotEmpty)
+                              const SizedBox(width: 8),
+                              Text(cat.name),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedCategoryId = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: priceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Price (Rs)',
+                        prefixIcon: Icon(Icons.currency_rupee),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: ratingController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Rating (0.0 - 5.0)',
+                        prefixIcon: Icon(Icons.star_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: unitController,
+                      decoration: const InputDecoration(
+                        labelText: 'Unit (eg: 1 kg, 500 g, 6 pcs)',
+                        prefixIcon: Icon(Icons.straighten),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: deliveryMinutesController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Delivery Time (minutes)',
+                        prefixIcon: Icon(Icons.delivery_dining),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () async {
+                        final FilePickerResult? result = await FilePicker
+                            .platform
+                            .pickFiles(type: FileType.image, withData: true);
+
+                        final PlatformFile? file = result?.files.single;
+                        if (file == null || file.bytes == null) {
+                          return;
+                        }
+
+                        setDialogState(() {
+                          selectedImageBytes = file.bytes;
+                          selectedImageName = file.name;
+                          previewImageUrl = null;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.grey.shade300),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: Colors.green.shade50,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: selectedImageBytes != null
+                                        ? Image.memory(
+                                            selectedImageBytes!,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : (previewImageUrl != null &&
+                                              previewImageUrl!.isNotEmpty)
                                         ? Image.network(
                                             previewImageUrl!,
                                             fit: BoxFit.cover,
+                                            cacheHeight: 150,
+                                            cacheWidth: 150,
                                             errorBuilder:
                                                 (context, error, stackTrace) =>
                                                     const Icon(
-                                              Icons.image_outlined,
-                                              color: Colors.green,
-                                            ),
+                                                      Icons.image_outlined,
+                                                      color: Colors.green,
+                                                    ),
                                           )
                                         : const Icon(
                                             Icons.add_photo_alternate_outlined,
                                             color: Colors.green,
                                           ),
-                              ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        selectedImageName ??
+                                            (isEdit
+                                                ? 'Tap to replace product image'
+                                                : 'Tap to choose product image'),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Choose an image from your device and upload it to Firebase Storage.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade700,
+                                          height: 1.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    selectedImageName ??
-                                        (isEdit
-                                            ? 'Tap to replace product image'
-                                            : 'Tap to choose product image'),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Choose an image from your device and upload it to Firebase Storage.',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade700,
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 8),
+                            Text(
+                              selectedImageBytes == null &&
+                                      (previewImageUrl == null ||
+                                          previewImageUrl!.isEmpty)
+                                  ? 'No image selected'
+                                  : 'Image ready',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          selectedImageBytes == null &&
-                                  (previewImageUrl == null || previewImageUrl!.isEmpty)
-                              ? 'No image selected'
-                              : 'Image ready',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Center(child: Text('— OR —', style: TextStyle(fontSize: 12, color: Colors.grey))),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: imageUrlController,
-                  decoration: const InputDecoration(
-                    labelText: 'Direct Image URL (Optional)',
-                    hintText: 'https://example.com/image.jpg',
-                    prefixIcon: Icon(Icons.link),
-                    helperText: 'Paste a link to an image from the web.',
-                  ),
-                  onChanged: (val) {
-                    setDialogState(() {
-                      if (val.trim().isNotEmpty) {
-                        previewImageUrl = val.trim();
-                        selectedImageBytes = null;
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: descriptionController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    prefixIcon: Icon(Icons.description_outlined),
-                    alignLabelWithHint: true,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSaving ? null : () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-            isSaving
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : FilledButton(
-                    onPressed: () async {
-                final ScaffoldMessengerState messenger =
-                    ScaffoldMessenger.of(context);
-                final NavigatorState navigator = Navigator.of(context);
-                final ProductCatalogProvider catalogProvider =
-                    context.read<ProductCatalogProvider>();
-                final AuthProvider authProvider = context.read<AuthProvider>();
-                final String name = nameController.text.trim();
-                final String category = selectedCategoryId ?? '';
-                final double? price = double.tryParse(priceController.text);
-                final double? rating = double.tryParse(ratingController.text);
-                final String unit = unitController.text.trim();
-                final String description = descriptionController.text.trim();
-                final int? deliveryMins =
-                    int.tryParse(deliveryMinutesController.text);
-
-                if (name.isEmpty ||
-                    category.isEmpty ||
-                    price == null ||
-                    rating == null ||
-                    unit.isEmpty) {
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Please fill all required fields.'),
-                    ),
-                  );
-                  return;
-                }
-
-                if (rating < 0 || rating > 5) {
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Rating must be between 0 and 5.'),
-                    ),
-                  );
-                  return;
-                }
-
-                if (!mounted) return;
-                setDialogState(() {
-                  isSaving = true;
-                });
-
-                String finalImageUrl = imageUrlController.text.trim();
-                
-                // If URL is empty and we have picked bytes, try to upload
-                if (finalImageUrl.isEmpty && selectedImageBytes != null) {
-                  try {
-                    finalImageUrl = await catalogProvider.uploadProductImage(
-                      bytes: selectedImageBytes!,
-                      fileName: selectedImageName ?? '$name.jpg',
-                    );
-                  } catch (e) {
-                    if (!mounted) return;
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            'Image upload failed: $e. Using default placeholder.'),
-                        backgroundColor: Colors.orange.shade800,
-                        duration: const Duration(seconds: 5),
                       ),
-                    );
-                    finalImageUrl = ''; // Will fall back to default below
-                  }
-                }
-
-                if (finalImageUrl.isEmpty) {
-                  finalImageUrl = existing?.product.imageUrl ??
-                      'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600';
-                }
-
-                try {
-                  if (isEdit) {
-                    await catalogProvider.updateProduct(
-                      productId: existing.product.id,
-                      name: name,
-                      categoryId: category,
-                      price: price,
-                      rating: rating,
-                      unit: unit,
-                      imageUrl: finalImageUrl,
-                      description: description,
-                      deliveryMinutes: deliveryMins ?? 10,
-                      actor: authProvider.currentEmail,
-                    );
-                  } else {
-                    await catalogProvider.addProduct(
-                      name: name,
-                      categoryId: category,
-                      price: price,
-                      rating: rating,
-                      unit: unit,
-                      imageUrl: finalImageUrl,
-                      description: description,
-                      deliveryMinutes: deliveryMins ?? 10,
-                      actor: authProvider.currentEmail,
-                    );
-                  }
-                } catch (e) {
-                  if (!mounted) return;
-                  setDialogState(() {
-                    isSaving = false;
-                  });
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Error'),
-                      content: Text(e.toString()),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('OK'),
-                        ),
-                      ],
                     ),
-                  );
-                  return;
-                }
+                    const SizedBox(height: 12),
+                    const Center(
+                      child: Text(
+                        '— OR —',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: imageUrlController,
+                      decoration: const InputDecoration(
+                        labelText: 'Direct Image URL (Optional)',
+                        hintText: 'https://example.com/image.jpg',
+                        prefixIcon: Icon(Icons.link),
+                        helperText: 'Paste a link to an image from the web.',
+                      ),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          if (val.trim().isNotEmpty) {
+                            previewImageUrl = val.trim();
+                            selectedImageBytes = null;
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: descriptionController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        prefixIcon: Icon(Icons.description_outlined),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                        },
+                  child: const Text('Cancel'),
+                ),
+                isSaving
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : FilledButton(
+                        onPressed: () async {
+                          final ScaffoldMessengerState messenger =
+                              ScaffoldMessenger.of(context);
+                          final NavigatorState navigator = Navigator.of(
+                            context,
+                          );
+                          final ProductCatalogProvider catalogProvider = context
+                              .read<ProductCatalogProvider>();
+                          final AuthProvider authProvider = context
+                              .read<AuthProvider>();
+                          final String name = nameController.text.trim();
+                          final String category = selectedCategoryId ?? '';
+                          final double? price = double.tryParse(
+                            priceController.text,
+                          );
+                          final double? rating = double.tryParse(
+                            ratingController.text,
+                          );
+                          final String unit = unitController.text.trim();
+                          final String description = descriptionController.text
+                              .trim();
+                          final int? deliveryMins = int.tryParse(
+                            deliveryMinutesController.text,
+                          );
 
-                if (!mounted) return;
-                setDialogState(() {
-                  isSaving = false;
-                });
+                          if (name.isEmpty ||
+                              category.isEmpty ||
+                              price == null ||
+                              rating == null ||
+                              unit.isEmpty) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please fill all required fields.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
-                navigator.pop();
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(isEdit
-                        ? 'Product updated successfully!'
-                        : 'Product added successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              child: Text(isEdit ? 'Save' : 'Add'),
-            ),
-          ],
-        );
+                          if (rating < 0 || rating > 5) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Rating must be between 0 and 5.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (!mounted) return;
+                          setDialogState(() {
+                            isSaving = true;
+                          });
+
+                          String finalImageUrl = imageUrlController.text.trim();
+
+                          // If we have selected new image bytes (even if imageUrlController is not empty), priority to upload
+                          if (selectedImageBytes != null) {
+                            try {
+                              // Create temporary file for Cloudinary upload
+                              final tempDir = Directory.systemTemp;
+                              final tempFile = File(
+                                '${tempDir.path}/${selectedImageName ?? '$name.jpg'}',
+                              );
+                              await tempFile.writeAsBytes(selectedImageBytes!);
+
+                              // Upload to Cloudinary
+                              finalImageUrl =
+                                  await CloudinaryService.uploadImage(tempFile);
+
+                              // Clean up temp file
+                              if (tempFile.existsSync()) {
+                                await tempFile.delete();
+                              }
+                            } catch (e) {
+                              if (!mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Image upload failed: $e. Using default placeholder.',
+                                  ),
+                                  backgroundColor: Colors.orange.shade800,
+                                  duration: const Duration(seconds: 5),
+                                ),
+                              );
+                              finalImageUrl =
+                                  ''; // Will fall back to default below
+                            }
+                          }
+
+                          if (finalImageUrl.isEmpty) {
+                            finalImageUrl =
+                                existing?.product.imageUrl ??
+                                'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600';
+                          }
+
+                          try {
+                            if (isEdit) {
+                              await catalogProvider.updateProduct(
+                                productId: existing.product.id,
+                                name: name,
+                                categoryId: category,
+                                price: price,
+                                rating: rating,
+                                unit: unit,
+                                imageUrl: finalImageUrl,
+                                description: description,
+                                deliveryMinutes: deliveryMins ?? 10,
+                                actor: authProvider.currentEmail,
+                              );
+                            } else {
+                              await catalogProvider.addProduct(
+                                name: name,
+                                categoryId: category,
+                                price: price,
+                                rating: rating,
+                                unit: unit,
+                                imageUrl: finalImageUrl,
+                                description: description,
+                                deliveryMinutes: deliveryMins ?? 10,
+                                actor: authProvider.currentEmail,
+                              );
+                            }
+                          } catch (e) {
+                            if (!mounted) return;
+                            setDialogState(() {
+                              isSaving = false;
+                            });
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Error'),
+                                content: Text(e.toString()),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (!mounted) return;
+                          setDialogState(() {
+                            isSaving = false;
+                          });
+
+                          navigator.pop();
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isEdit
+                                    ? 'Product updated successfully!'
+                                    : 'Product added successfully!',
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                        child: Text(isEdit ? 'Save' : 'Add'),
+                      ),
+              ],
+            );
           },
         );
       },
@@ -485,16 +527,18 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           child: Image.network(
                             product.imageUrl,
                             fit: BoxFit.cover,
+                            cacheHeight: 150,
+                            cacheWidth: 150,
                             errorBuilder: (context, error, stackTrace) =>
                                 Container(
-                              color: Colors.green.shade100,
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.local_grocery_store,
-                                size: 28,
-                                color: Colors.green,
-                              ),
-                            ),
+                                  color: Colors.green.shade100,
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.local_grocery_store,
+                                    size: 28,
+                                    color: Colors.green,
+                                  ),
+                                ),
                           ),
                         ),
                       ),
@@ -677,7 +721,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             builder: (ctx) => AlertDialog(
                               title: const Text('Delete Product'),
                               content: Text(
-                                  'Are you sure you want to delete "${product.name}"?'),
+                                'Are you sure you want to delete "${product.name}"?',
+                              ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, false),
@@ -703,7 +748,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Product deleted successfully!'),
+                                    content: Text(
+                                      'Product deleted successfully!',
+                                    ),
                                     backgroundColor: Colors.green,
                                   ),
                                 );
@@ -712,7 +759,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Failed to delete product: $e'),
+                                    content: Text(
+                                      'Failed to delete product: $e',
+                                    ),
                                     backgroundColor: Colors.red,
                                   ),
                                 );

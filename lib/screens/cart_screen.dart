@@ -52,6 +52,8 @@ class CartScreen extends StatelessWidget {
                           child: Image.network(
                             product.imageUrl,
                             fit: BoxFit.cover,
+                            cacheHeight: 150,
+                            cacheWidth: 150,
                             errorBuilder: (context, error, stackTrace) =>
                                 Container(
                                   color: Colors.green.shade100,

@@ -43,7 +43,8 @@ class OrderDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String displayId = 'DM-${order.id.substring(0, order.id.length > 8 ? 8 : order.id.length).toUpperCase()}';
+    final String displayId =
+        'DM-${order.id.substring(0, order.id.length > 8 ? 8 : order.id.length).toUpperCase()}';
     final Color sColor = _statusColor(order.status);
 
     return Scaffold(
@@ -56,7 +57,10 @@ class OrderDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [sColor.withValues(alpha: 0.15), sColor.withValues(alpha: 0.05)],
+                colors: [
+                  sColor.withValues(alpha: 0.15),
+                  sColor.withValues(alpha: 0.05),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -72,19 +76,33 @@ class OrderDetailScreen extends StatelessWidget {
                     color: sColor.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(_statusIcon(order.status), color: sColor, size: 28),
+                  child: Icon(
+                    _statusIcon(order.status),
+                    color: sColor,
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.status,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 20, color: sColor)),
+                      Text(
+                        order.status,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 20,
+                          color: sColor,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text('Order #$displayId',
-                          style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                      Text(
+                        'Order #$displayId',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -96,28 +114,42 @@ class OrderDetailScreen extends StatelessWidget {
           // Order Info
           _InfoCard(
             children: [
-              _InfoRow(icon: Icons.calendar_today, label: 'Order Date',
-                  value: '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}  ${order.createdAt.hour}:${order.createdAt.minute.toString().padLeft(2, '0')}'),
+              _InfoRow(
+                icon: Icons.calendar_today,
+                label: 'Order Date',
+                value:
+                    '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}  ${order.createdAt.hour}:${order.createdAt.minute.toString().padLeft(2, '0')}',
+              ),
               const Divider(height: 20),
-              _InfoRow(icon: Icons.location_on_outlined, label: 'Delivery Address',
-                  value: order.deliveryAddress),
+              _InfoRow(
+                icon: Icons.location_on_outlined,
+                label: 'Delivery Address',
+                value: order.deliveryAddress,
+              ),
               const Divider(height: 20),
-              _InfoRow(icon: Icons.payments_outlined, label: 'Payment Method',
-                  value: order.paymentMethod),
+              _InfoRow(
+                icon: Icons.payments_outlined,
+                label: 'Payment Method',
+                value: order.paymentMethod,
+              ),
               const Divider(height: 20),
               _InfoRow(
                 icon: Icons.check_circle_outline,
                 label: 'Payment Status',
                 value: order.paymentStatus,
-                valueColor: order.paymentStatus == 'Paid' ? Colors.green : Colors.orange,
+                valueColor: order.paymentStatus == 'Paid'
+                    ? Colors.green
+                    : Colors.orange,
               ),
             ],
           ),
           const SizedBox(height: 16),
 
           // Items
-          const Text('Items Ordered',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
+          const Text(
+            'Items Ordered',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+          ),
           const SizedBox(height: 8),
           ...order.lines.map((line) => _buildItemTile(line)),
           const SizedBox(height: 16),
@@ -125,12 +157,21 @@ class OrderDetailScreen extends StatelessWidget {
           // Price Breakdown
           _InfoCard(
             children: [
-              _PriceRow(label: 'Item Total', value: order.lines.fold<double>(
-                  0, (sum, l) => sum + l.lineTotal)),
+              _PriceRow(
+                label: 'Item Total',
+                value: order.lines.fold<double>(
+                  0,
+                  (sum, l) => sum + l.lineTotal,
+                ),
+              ),
               const _PriceRow(label: 'Delivery Fee', value: 25),
               const _PriceRow(label: 'Handling Fee', value: 8),
               const Divider(height: 20),
-              _PriceRow(label: 'Grand Total', value: order.amount, isBold: true),
+              _PriceRow(
+                label: 'Grand Total',
+                value: order.amount,
+                isBold: true,
+              ),
             ],
           ),
         ],
@@ -156,8 +197,13 @@ class OrderDetailScreen extends StatelessWidget {
                 width: 56,
                 height: 56,
                 child: line.imageUrl.isNotEmpty
-                    ? Image.network(line.imageUrl, fit: BoxFit.cover,
-                        errorBuilder: (c, e, s) => _placeholderIcon())
+                    ? Image.network(
+                        line.imageUrl,
+                        fit: BoxFit.cover,
+                        cacheHeight: 120,
+                        cacheWidth: 120,
+                        errorBuilder: (c, e, s) => _placeholderIcon(),
+                      )
                     : _placeholderIcon(),
               ),
             ),
@@ -166,21 +212,30 @@ class OrderDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(line.productName,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    line.productName,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 2),
-                  Text(line.unit, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                  Text(
+                    line.unit,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('x${line.quantity}',
-                    style: TextStyle(color: Colors.grey.shade600)),
+                Text(
+                  'x${line.quantity}',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
                 const SizedBox(height: 2),
-                Text('Rs ${line.lineTotal.toStringAsFixed(0)}',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  'Rs ${line.lineTotal.toStringAsFixed(0)}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ],
             ),
           ],
@@ -193,7 +248,11 @@ class OrderDetailScreen extends StatelessWidget {
     return Container(
       color: Colors.green.shade100,
       alignment: Alignment.center,
-      child: const Icon(Icons.local_grocery_store, color: Colors.green, size: 24),
+      child: const Icon(
+        Icons.local_grocery_store,
+        color: Colors.green,
+        size: 24,
+      ),
     );
   }
 }
@@ -244,10 +303,14 @@ class _InfoRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           flex: 5,
-          child: Text(value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                  fontWeight: FontWeight.w600, color: valueColor ?? Colors.black87)),
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: valueColor ?? Colors.black87,
+            ),
+          ),
         ),
       ],
     );
@@ -255,7 +318,11 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _PriceRow extends StatelessWidget {
-  const _PriceRow({required this.label, required this.value, this.isBold = false});
+  const _PriceRow({
+    required this.label,
+    required this.value,
+    this.isBold = false,
+  });
   final String label;
   final double value;
   final bool isBold;

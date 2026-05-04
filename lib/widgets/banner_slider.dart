@@ -52,6 +52,8 @@ class BannerSlider extends StatelessWidget {
                   Image.network(
                     promotion.imageUrl,
                     fit: BoxFit.cover,
+                    cacheHeight: 300,
+                    cacheWidth: 500,
                     errorBuilder: (context, error, stackTrace) {
                       // If image fails to load, show placeholder
                       return Container(
