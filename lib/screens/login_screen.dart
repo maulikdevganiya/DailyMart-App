@@ -34,52 +34,69 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     FocusScope.of(context).unfocus();
 
-    final AuthProvider auth = context.read<AuthProvider>();
-    final String email = _emailController.text.trim();
-    final String password = _passwordController.text.trim();
+    try {
+      final AuthProvider auth = context.read<AuthProvider>();
+      final String email = _emailController.text.trim();
+      final String password = _passwordController.text.trim();
 
-    // Try admin login first
-    final bool isAdmin = await auth.loginAdmin(
-      email: email,
-      password: password,
-    );
-    if (!mounted) return;
-
-    if (isAdmin) {
-      setState(() => _isLoading = false);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AdminShellScreen()),
+      // Try admin login first
+      final bool isAdmin = await auth.loginAdmin(
+        email: email,
+        password: password,
       );
-      return;
-    }
+      if (!mounted) return;
 
-    // Try customer login
-    final bool isCustomer = await auth.loginCustomer(
-      email: email,
-      password: password,
-    );
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (isAdmin) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminShellScreen()),
+          );
+        }
+        return;
+      }
 
-    if (isCustomer) {
-      // Initialize cart with current user ID and restore saved items
-      final cartProvider = context.read<CartProvider>();
-      cartProvider.setCurrentUser(auth.currentUid);
-      await cartProvider.restoreCartFromFirestore(auth.currentUid);
+      // Try customer login
+      final bool isCustomer = await auth.loginCustomer(
+        email: email,
+        password: password,
+      );
+      if (!mounted) return;
 
+      if (isCustomer) {
+        // Initialize cart with current user ID and restore saved items
+        final cartProvider = context.read<CartProvider>();
+        cartProvider.setCurrentUser(auth.currentUid);
+        await cartProvider.restoreCartFromFirestore(auth.currentUid);
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainShellScreen()),
+          );
+        }
+        return;
+      }
+
+      // Login failed - show error
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainShellScreen()),
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid email or password.')),
         );
       }
-      return;
+    } catch (e) {
+      // Handle any unexpected errors
+      debugPrint('Login error: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed. Please try again.')),
+        );
+      }
     }
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Invalid email or password.')));
   }
 
   @override

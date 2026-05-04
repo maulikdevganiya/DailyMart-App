@@ -104,10 +104,13 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
 
-      final UserCredential credential = await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password.trim(),
-      );
+      // Sign in with a timeout to avoid indefinite waits
+      final UserCredential credential = await _auth
+          .signInWithEmailAndPassword(
+            email: email.trim(),
+            password: password.trim(),
+          )
+          .timeout(const Duration(seconds: 10));
       _firebaseUser = credential.user;
       _role = AppRole.customer;
       await _fetchCurrentUser();
@@ -115,6 +118,10 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on FirebaseAuthException catch (e) {
       debugPrint('loginCustomer FirebaseAuthException: ${e.code}');
+      return false;
+    } on Exception catch (e) {
+      // Handle timeout or other exceptions from signIn
+      debugPrint('loginCustomer error/timeout: $e');
       return false;
     } catch (e) {
       debugPrint('loginCustomer error: $e');
@@ -128,17 +135,21 @@ class AuthProvider extends ChangeNotifier {
     required String password,
   }) async {
     try {
-      final UserCredential credential = await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password.trim(),
-      );
+      // Sign in with a timeout so admin login doesn't hang indefinitely
+      final UserCredential credential = await _auth
+          .signInWithEmailAndPassword(
+            email: email.trim(),
+            password: password.trim(),
+          )
+          .timeout(const Duration(seconds: 10));
       _firebaseUser = credential.user;
 
       // Check if user has admin role in Firestore
       final DocumentSnapshot userDoc = await _db
           .collection('users')
           .doc(credential.user!.uid)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 5));
 
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>?;
@@ -213,15 +224,18 @@ class AuthProvider extends ChangeNotifier {
       final DocumentSnapshot userDoc = await _db
           .collection('users')
           .doc(_firebaseUser!.uid)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 5));
       if (userDoc.exists) {
         _currentUser = AppUser.fromMap(
           userDoc.id,
           userDoc.data() as Map<String, dynamic>,
         );
       }
-    } catch (_) {
-      // Handle error silently
+    } on Exception catch (e) {
+      // Timeout or other error - don't block the login flow
+      debugPrint('[_fetchCurrentUser] failed: $e');
+      _currentUser = null;
     }
   }
 
