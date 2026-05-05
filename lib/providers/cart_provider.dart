@@ -101,6 +101,7 @@ class CartProvider extends ChangeNotifier {
 
   // Total count of items (if you have 2 apples and 3 oranges, this is 5)
   int get totalItems {
+    // ignore: avoid_types_as_parameter_names
     return _items.values.fold<int>(0, (sum, line) => sum + line.quantity);
   }
 
@@ -108,6 +109,7 @@ class CartProvider extends ChangeNotifier {
   double get totalPrice {
     return _items.values.fold<double>(
       0,
+      // ignore: avoid_types_as_parameter_names
       (sum, line) => sum + (line.product.price * line.quantity),
     );
   }

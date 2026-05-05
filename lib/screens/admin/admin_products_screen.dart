@@ -447,6 +447,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                               isSaving = false;
                             });
                             showDialog(
+                              // ignore: use_build_context_synchronously
                               context: context,
                               builder: (ctx) => AlertDialog(
                                 title: const Text('Error'),
@@ -757,6 +758,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                               }
                             } catch (e) {
                               if (mounted) {
+                                // ignore: use_build_context_synchronously
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(

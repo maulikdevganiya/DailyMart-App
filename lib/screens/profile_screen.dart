@@ -5,6 +5,7 @@ import '../models/admin_order.dart';
 import '../models/app_user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
+import '../providers/address_provider.dart';
 import 'login_screen.dart';
 import 'settings/help_support_screen.dart';
 import 'settings/manage_addresses_screen.dart';
@@ -168,6 +169,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             if (!mounted || !sheetContext.mounted) return;
 
                             if (saved) {
+                              // Update AddressProvider after profile update
+                              if (sheetContext.mounted) {
+                                sheetContext
+                                    .read<AddressProvider>()
+                                    .setSelectedAddressText(
+                                      addressController.text,
+                                    );
+                              }
+
                               sheetNavigator.pop();
                               messenger.showSnackBar(
                                 const SnackBar(

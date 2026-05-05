@@ -45,19 +45,23 @@ class ProductCard extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.network(
-                        product.imageUrl,
-                        fit: BoxFit.cover,
-                        cacheHeight: 300,
-                        cacheWidth: 300,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: Colors.green.shade100,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.local_grocery_store,
-                            size: 32,
-                            color: Colors.green,
-                          ),
+                      Hero(
+                        tag: 'product_image_${product.id}',
+                        child: Image.network(
+                          product.imageUrl,
+                          fit: BoxFit.cover,
+                          cacheHeight: 300,
+                          cacheWidth: 300,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.green.shade100,
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.local_grocery_store,
+                                  size: 32,
+                                  color: Colors.green,
+                                ),
+                              ),
                         ),
                       ),
                       Positioned(

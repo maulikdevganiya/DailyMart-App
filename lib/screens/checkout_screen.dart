@@ -38,18 +38,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final CartProvider cart = context.watch<CartProvider>();
     final AuthProvider auth = context.watch<AuthProvider>();
     final AddressProvider addressProvider = context.watch<AddressProvider>();
-    final Address? selectedAddress = addressProvider.selectedAddress;
-    final bool hasProfileAddress = auth.currentUser?.address.isNotEmpty == true;
+    final Address? selectedAddressFromList = addressProvider.selectedAddress;
 
-    // Determine effective address for checkout
-    final bool hasEffectiveAddress =
-        hasProfileAddress || selectedAddress != null;
-    final String deliveryAddress = hasProfileAddress
-        ? auth.currentUser!.address
-        : (selectedAddress?.fullAddress ?? '');
-    final String deliveryLabel = hasProfileAddress
-        ? 'Saved Address'
-        : (selectedAddress?.label ?? 'Home');
+    // Use selected specific address if available, otherwise fallback to profile default address
+    final String deliveryAddress;
+    final String deliveryLabel;
+    final bool hasEffectiveAddress;
+
+    if (selectedAddressFromList != null) {
+      deliveryAddress = selectedAddressFromList.fullAddress;
+      deliveryLabel = selectedAddressFromList.label;
+      hasEffectiveAddress = true;
+    } else if (auth.currentUser?.address.isNotEmpty == true) {
+      deliveryAddress = auth.currentUser!.address;
+      deliveryLabel = 'Saved Address';
+      hasEffectiveAddress = true;
+    } else {
+      deliveryAddress = 'No address saved yet';
+      deliveryLabel = 'Home';
+      hasEffectiveAddress = false;
+    }
 
     final double itemTotal = cart.totalPrice;
     const double deliveryFee = 25;
@@ -190,13 +198,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   : () async {
                       // Build complete address for order
                       final String addressStr;
-                      if (selectedAddress != null) {
+                      if (selectedAddressFromList != null) {
                         // Use selected address from address list
                         addressStr =
-                            '${selectedAddress.fullAddress}, ${selectedAddress.city} - ${selectedAddress.pincode}';
-                      } else if (hasProfileAddress) {
+                            '${selectedAddressFromList.fullAddress}, ${selectedAddressFromList.city} - ${selectedAddressFromList.pincode}';
+                      } else if (auth.currentUser?.address.isNotEmpty == true) {
                         // Use profile address from user account
-                        addressStr = deliveryAddress;
+                        addressStr = auth.currentUser!.address;
                       } else {
                         // Should not reach here due to button disable logic,
                         // but fallback to default

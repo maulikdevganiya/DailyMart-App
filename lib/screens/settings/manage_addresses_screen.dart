@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../providers/address_provider.dart';
 
 class ManageAddressesScreen extends StatefulWidget {
   const ManageAddressesScreen({super.key});
@@ -73,11 +74,25 @@ class _ManageAddressesScreenState extends State<ManageAddressesScreen> {
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 52,
                     child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                       onPressed: () async {
-                        if (!(formKey.currentState?.validate() ?? false))
+                        if (!(formKey.currentState?.validate() ?? false)) {
                           return;
+                        }
+
+                        // Show loading state or disable button
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Updating address...'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
 
                         final bool saved = await authProvider
                             .updateCurrentUserProfile(
@@ -89,21 +104,36 @@ class _ManageAddressesScreenState extends State<ManageAddressesScreen> {
                         if (!sheetContext.mounted) return;
 
                         if (saved) {
+                          // Update AddressProvider after profile update
+                          sheetContext
+                              .read<AddressProvider>()
+                              .setSelectedAddressText(addressController.text);
+
                           Navigator.pop(sheetContext);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
+                              backgroundColor: Colors.green,
                               content: Text('Address updated successfully'),
                             ),
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Could not update address'),
+                              backgroundColor: Colors.red,
+                              content: Text(
+                                'Failed to update address. Please check your connection.',
+                              ),
                             ),
                           );
                         }
                       },
-                      child: const Text('Save Address'),
+                      child: const Text(
+                        'Save Address',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],

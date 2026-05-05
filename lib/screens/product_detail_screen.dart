@@ -16,7 +16,16 @@ class ProductDetailScreen extends StatelessWidget {
     final int quantity = cart.quantityFor(product.id);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Product Details')),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'Product Details',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
       body: Column(
         children: [
           Expanded(
@@ -24,145 +33,209 @@ class ProductDetailScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
               children: [
                 // ── Product Image ──
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: AspectRatio(
-                    aspectRatio: 1.4,
-                    child: Image.network(
-                      product.imageUrl,
-                      fit: BoxFit.cover,
-                      cacheHeight: 600,
-                      cacheWidth: 600,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.green.shade100,
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.local_grocery_store,
-                          size: 70,
-                          color: Colors.green,
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: AspectRatio(
+                      aspectRatio: 1.3,
+                      child: Hero(
+                        tag: 'product_image_${product.id}',
+                        child: Image.network(
+                          product.imageUrl,
+                          fit: BoxFit.cover,
+                          cacheHeight: 600,
+                          cacheWidth: 600,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.green.shade50,
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.local_grocery_store,
+                                  size: 70,
+                                  color: Colors.green,
+                                ),
+                              ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // ── Product Name ──
-                Text(
-                  product.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 24,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // ── Price and Unit ──
+                // ── Header Area ──
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 26,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            product.unit,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.star_rounded,
+                            color: Colors.amber,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            product.rating.toStringAsFixed(1),
+                            style: TextStyle(
+                              color: Colors.amber.shade900,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── Price & Category Row ──
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Rs ${product.price.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      product.unit,
                       style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.green.shade800,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                // ── Rating ──
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.star_rounded,
-                      color: Colors.amber,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${product.rating.toStringAsFixed(1)} rating',
-                      style: TextStyle(
-                        color: Colors.grey.shade800,
-                        fontWeight: FontWeight.w600,
+                    if (product.categoryId.isNotEmpty)
+                      _detailChip(
+                        icon: Icons.category_rounded,
+                        label:
+                            product.categoryId[0].toUpperCase() +
+                            product.categoryId.substring(1),
+                        color: Colors.blue,
                       ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-                // ── Category & Section chips ──
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _detailChip(
-                      icon: Icons.category_outlined,
-                      label: product.categoryId.isNotEmpty
-                          ? '${product.categoryId[0].toUpperCase()}${product.categoryId.substring(1)}'
-                          : 'Uncategorized',
-                      color: Colors.blue,
-                    ),
-                    _detailChip(
-                      icon: Icons.view_module_outlined,
-                      label: product.section.isNotEmpty
-                          ? product.section
-                          : 'General',
-                      color: Colors.purple,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // ── Delivery time ──
+                // ── Delivery section ──
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade50, Colors.white],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.green.shade100),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.bolt, color: Colors.green.shade700),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Delivery in ${product.deliveryMinutes} minutes',
-                        style: TextStyle(
-                          color: Colors.green.shade900,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          shape: BoxShape.circle,
                         ),
+                        child: Icon(Icons.bolt, color: Colors.green.shade700),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Super Fast Delivery',
+                            style: TextStyle(
+                              color: Colors.green.shade900,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            'Delivery in ${product.deliveryMinutes} minutes',
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 24),
 
                 // ── Description ──
                 const Text(
-                  'Description',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  'About Product',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Text(
                   product.description,
-                  style: TextStyle(color: Colors.grey.shade800, height: 1.4),
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    height: 1.6,
+                    fontSize: 15,
+                  ),
                 ),
               ],
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
               child: Row(
                 children: [
                   if (quantity > 0)
@@ -172,29 +245,49 @@ class ProductDetailScreen extends StatelessWidget {
                       onDecrease: () => cart.decrease(product),
                     )
                   else
-                    SizedBox(
-                      width: 140,
+                    Expanded(
+                      flex: 2,
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(44),
+                          minimumSize: const Size.fromHeight(54),
+                          side: BorderSide(color: Colors.green.shade700),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         onPressed: () => cart.addProduct(product),
-                        child: const Text('Add to cart'),
+                        child: Text(
+                          'Add to cart',
+                          style: TextStyle(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
+                    flex: 3,
                     child: SizedBox(
-                      height: 46,
+                      height: 54,
                       child: FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.green.shade700,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         onPressed: () {
                           cart.addProduct(product);
                           Navigator.pop(context);
                         },
-                        child: const Text('Buy now'),
+                        child: const Text(
+                          'Buy Now',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ),

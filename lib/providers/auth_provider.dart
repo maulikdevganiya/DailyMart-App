@@ -450,7 +450,10 @@ class AuthProvider extends ChangeNotifier {
     required String address,
   }) async {
     final User? user = _auth.currentUser;
-    if (user == null) return false;
+    if (user == null) {
+      debugPrint('[updateCurrentUserProfile] No current user');
+      return false;
+    }
 
     try {
       final Map<String, dynamic> updates = {
@@ -459,6 +462,9 @@ class AuthProvider extends ChangeNotifier {
         'address': address.trim(),
       };
 
+      debugPrint(
+        '[updateCurrentUserProfile] Updating uid: ${user.uid} with $updates',
+      );
       await _db.collection('users').doc(user.uid).update(updates);
 
       _currentUser =
@@ -470,8 +476,10 @@ class AuthProvider extends ChangeNotifier {
                 address: address.trim(),
               );
       notifyListeners();
+      debugPrint('[updateCurrentUserProfile] Success');
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[updateCurrentUserProfile] Error: $e');
       return false;
     }
   }
