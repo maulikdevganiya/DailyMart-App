@@ -451,11 +451,14 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     final User? user = _auth.currentUser;
     if (user == null) {
+      _lastError = 'You are not logged in.';
       debugPrint('[updateCurrentUserProfile] No current user');
+      notifyListeners();
       return false;
     }
 
     try {
+      _lastError = null;
       final Map<String, dynamic> updates = {
         'name': name.trim(),
         'phone': phone.trim(),
@@ -465,7 +468,12 @@ class AuthProvider extends ChangeNotifier {
       debugPrint(
         '[updateCurrentUserProfile] Updating uid: ${user.uid} with $updates',
       );
-      await _db.collection('users').doc(user.uid).update(updates);
+      // Use set with merge so we create the document if it doesn't exist
+      // (update() would fail when the document is missing).
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .set(updates, SetOptions(merge: true));
 
       _currentUser =
           (_currentUser ??
@@ -478,8 +486,17 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       debugPrint('[updateCurrentUserProfile] Success');
       return true;
+    } on FirebaseException catch (e) {
+      _lastError = e.message ?? 'Could not update profile.';
+      debugPrint(
+        '[updateCurrentUserProfile] FirebaseException: ${e.code} - ${e.message}',
+      );
+      notifyListeners();
+      return false;
     } catch (e) {
+      _lastError = 'Could not update profile.';
       debugPrint('[updateCurrentUserProfile] Error: $e');
+      notifyListeners();
       return false;
     }
   }

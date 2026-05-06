@@ -19,6 +19,190 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
+// Bottom sheet implemented as a StatefulWidget so it owns and disposes controllers
+class _EditProfileSheet extends StatefulWidget {
+  const _EditProfileSheet({required this.user});
+  final AppUser user;
+
+  @override
+  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _addressController;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.user.name);
+    _phoneController = TextEditingController(text: widget.user.phone);
+    _addressController = TextEditingController(text: widget.user.address);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Edit Profile',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter your name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone_outlined),
+                ),
+                validator: (value) {
+                  final phone = (value ?? '').trim();
+                  if (phone.isNotEmpty && phone.length < 10) {
+                    return 'Enter a valid phone number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _addressController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Address',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: _isSaving
+                      ? null
+                      : () async {
+                          if (!(_formKey.currentState?.validate() ?? false))
+                            return;
+                          setState(() => _isSaving = true);
+                          try {
+                            final authProvider = context.read<AuthProvider>();
+                            final addressProvider = context
+                                .read<AddressProvider>();
+                            final navigator = Navigator.of(context);
+                            final messenger = ScaffoldMessenger.of(context);
+
+                            final String name = _nameController.text.trim();
+                            final String phone = _phoneController.text.trim();
+                            final String address = _addressController.text
+                                .trim();
+
+                            final bool saved = await authProvider
+                                .updateCurrentUserProfile(
+                                  name: name,
+                                  phone: phone,
+                                  address: address,
+                                );
+
+                            if (!mounted) return;
+
+                            if (saved) {
+                              addressProvider.setSelectedAddressText(address);
+                              navigator.pop();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Profile updated successfully'),
+                                ),
+                              );
+                            } else {
+                              setState(() => _isSaving = false);
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Could not update profile'),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              setState(() => _isSaving = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+                          }
+                        },
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Save Changes'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<List<AdminOrder>> _userOrdersFuture;
 
@@ -48,166 +232,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _showEditProfileSheet(AppUser user) async {
-    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-    final TextEditingController nameController = TextEditingController(
-      text: user.name,
-    );
-    final TextEditingController phoneController = TextEditingController(
-      text: user.phone,
-    );
-    final TextEditingController addressController = TextEditingController(
-      text: user.address,
-    );
-
+    // Use a dedicated stateful sheet widget which manages its own controllers
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (sheetContext, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 44,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Edit Profile',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Full Name',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Enter your name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone Number',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.phone_outlined),
-                        ),
-                        validator: (value) {
-                          final phone = (value ?? '').trim();
-                          if (phone.isNotEmpty && phone.length < 10) {
-                            return 'Enter a valid phone number';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: addressController,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Address',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.location_on_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: FilledButton(
-                          onPressed: () async {
-                            if (!(formKey.currentState?.validate() ?? false)) {
-                              return;
-                            }
-
-                            final NavigatorState sheetNavigator = Navigator.of(
-                              sheetContext,
-                            );
-                            final ScaffoldMessengerState messenger =
-                                ScaffoldMessenger.of(context);
-
-                            final bool saved = await context
-                                .read<AuthProvider>()
-                                .updateCurrentUserProfile(
-                                  name: nameController.text,
-                                  phone: phoneController.text,
-                                  address: addressController.text,
-                                );
-
-                            if (!mounted || !sheetContext.mounted) return;
-
-                            if (saved) {
-                              // Update AddressProvider after profile update
-                              if (sheetContext.mounted) {
-                                sheetContext
-                                    .read<AddressProvider>()
-                                    .setSelectedAddressText(
-                                      addressController.text,
-                                    );
-                              }
-
-                              sheetNavigator.pop();
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Profile updated successfully'),
-                                ),
-                              );
-                            } else {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Could not update profile'),
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text('Save Changes'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (sheetContext) => _EditProfileSheet(user: user),
     );
-
-    nameController.dispose();
-    phoneController.dispose();
-    addressController.dispose();
   }
 
   @override

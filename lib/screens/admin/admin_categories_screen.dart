@@ -26,7 +26,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     {'label': 'Sand', 'hex': '#FFF8E1'},
   ];
 
-  void _openCategoryDialog({GroceryCategory? existing}) {
+  Future<void> _openCategoryDialog({GroceryCategory? existing}) async {
     final bool isEdit = existing != null;
     final TextEditingController nameController = TextEditingController(
       text: existing?.name ?? '',
@@ -36,7 +36,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     String selectedColorHex = existing?.colorHex ?? '#E4F7EA';
     bool isSaving = false;
 
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
@@ -96,10 +96,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                           padding: const EdgeInsets.all(8),
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                          ),
+                                crossAxisCount: 4,
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                              ),
                           itemCount: GroceryCategory.availableIcons.length,
                           itemBuilder: (context, index) {
                             final entry = GroceryCategory.availableIcons.entries
@@ -178,7 +178,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                           color: Colors.green.withOpacity(0.3),
                                           blurRadius: 4,
                                           spreadRadius: 1,
-                                        )
+                                        ),
                                       ]
                                     : null,
                               ),
@@ -227,8 +227,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                             isSaving = true;
                           });
 
-                          final CategoryProvider provider =
-                              context.read<CategoryProvider>();
+                          final CategoryProvider provider = context
+                              .read<CategoryProvider>();
                           bool success = false;
 
                           if (isEdit) {
@@ -255,9 +255,11 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(isEdit
-                                      ? 'Category updated successfully!'
-                                      : 'Category added successfully!'),
+                                  content: Text(
+                                    isEdit
+                                        ? 'Category updated successfully!'
+                                        : 'Category added successfully!',
+                                  ),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -265,11 +267,15 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                      'Operation failed. Please try again.'),
+                                    'Operation failed. Please try again.',
+                                  ),
                                   backgroundColor: Colors.red,
                                 ),
                               );
                             }
+
+                            // Dispose controllers created for the dialog to avoid memory leaks
+                            nameController.dispose();
                           }
                         },
                         child: Text(isEdit ? 'Update' : 'Create'),
@@ -292,8 +298,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final CategoryProvider categoryProvider =
-        context.watch<CategoryProvider>();
+    final CategoryProvider categoryProvider = context.watch<CategoryProvider>();
     final List<GroceryCategory> categories = categoryProvider.categories;
 
     return Scaffold(
@@ -375,12 +380,15 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                           .deleteCategory(category.id);
                                       if (context.mounted) {
                                         Navigator.pop(ctx);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
-                                            content: Text(success
-                                                ? 'Category deleted successfully!'
-                                                : 'Failed to delete category.'),
+                                            content: Text(
+                                              success
+                                                  ? 'Category deleted successfully!'
+                                                  : 'Failed to delete category.',
+                                            ),
                                             backgroundColor: success
                                                 ? Colors.green
                                                 : Colors.red,

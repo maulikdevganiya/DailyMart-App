@@ -18,7 +18,7 @@ class AdminProductsScreen extends StatefulWidget {
 }
 
 class _AdminProductsScreenState extends State<AdminProductsScreen> {
-  void _openProductDialog({CatalogProduct? existing}) {
+  Future<void> _openProductDialog({CatalogProduct? existing}) async {
     final bool isEdit = existing != null;
     final TextEditingController nameController = TextEditingController(
       text: existing?.product.name ?? '',
@@ -61,7 +61,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       selectedCategoryId = null;
     }
 
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
@@ -488,6 +488,15 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         );
       },
     );
+
+    // Dispose controllers created for the dialog to avoid memory leaks
+    nameController.dispose();
+    priceController.dispose();
+    ratingController.dispose();
+    unitController.dispose();
+    descriptionController.dispose();
+    deliveryMinutesController.dispose();
+    imageUrlController.dispose();
   }
 
   @override
@@ -768,6 +777,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                   ),
                                 );
                               }
+
+                              // (controllers disposed after dialog completes)
                             }
                           }
                         },

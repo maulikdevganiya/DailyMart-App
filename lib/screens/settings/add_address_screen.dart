@@ -21,7 +21,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   final _pincodeController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _isDefault = false;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -37,13 +36,27 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   Future<void> _saveAddress() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
     final auth = context.read<AuthProvider>();
     final addressProvider = context.read<AddressProvider>();
 
+    // FIX #1: Check auth BEFORE showing loading or doing anything
+    if (auth.currentUid.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please login to save an address.')),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+      return;
+    }
+
+    // FIX #2: Use provider's isLoading instead of local _isLoading
+    // so the UI reacts to the actual async state in AddressProvider
     final newAddress = Address(
-      id: '', // Will be set by Firestore
+      id: '',
       label: _labelController.text.trim(),
       fullAddress: _addressController.text.trim(),
       city: _cityController.text.trim(),
@@ -54,42 +67,32 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     );
 
     try {
-      if (auth.currentUid.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please login to save an address.')),
-          );
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
-        }
-        return;
-      }
-
       await addressProvider.addAddress(auth.currentUid, newAddress);
+
       if (mounted) {
-        Navigator.pop(context);
+        // FIX #3: Pass back 'true' so the previous screen knows to refresh UI
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Address saved successfully!')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving address: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving address: $e')));
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // FIX #2: Watch provider's isLoading — not local setState
+    final isLoading = context.watch<AddressProvider>().isLoading;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Add New Address')),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Form(
               key: _formKey,
@@ -106,7 +109,9 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                         .map((l) => DropdownMenuItem(value: l, child: Text(l)))
                         .toList(),
                     onChanged: (val) {
-                      if (val != null) setState(() => _labelController.text = val);
+                      if (val != null) {
+                        setState(() => _labelController.text = val);
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
@@ -117,7 +122,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                       border: OutlineInputBorder(),
                     ),
                     maxLines: 3,
-                    validator: (v) => v!.isEmpty ? 'Please enter address' : null,
+                    validator: (v) =>
+                        v!.trim().isEmpty ? 'Please enter address' : null,
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -129,7 +135,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                             labelText: 'City',
                             border: OutlineInputBorder(),
                           ),
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
+                          validator: (v) =>
+                              v!.trim().isEmpty ? 'Required' : null,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -140,7 +147,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                             labelText: 'State',
                             border: OutlineInputBorder(),
                           ),
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
+                          validator: (v) =>
+                              v!.trim().isEmpty ? 'Required' : null,
                         ),
                       ),
                     ],
@@ -156,7 +164,12 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
+                          // FIX #4: Added pincode length validation
+                          validator: (v) {
+                            if (v!.trim().isEmpty) return 'Required';
+                            if (v.trim().length != 6) return 'Invalid pincode';
+                            return null;
+                          },
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -168,7 +181,12 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.phone,
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
+                          // FIX #4: Added phone length validation
+                          validator: (v) {
+                            if (v!.trim().isEmpty) return 'Required';
+                            if (v.trim().length < 10) return 'Invalid phone';
+                            return null;
+                          },
                         ),
                       ),
                     ],
@@ -184,7 +202,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                   SizedBox(
                     height: 50,
                     child: FilledButton(
-                      onPressed: _saveAddress,
+                      // FIX #5: Disable button while loading to prevent double submit
+                      onPressed: isLoading ? null : _saveAddress,
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.green.shade700,
                       ),
